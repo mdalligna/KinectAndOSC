@@ -1,0 +1,54 @@
+int R,G,B;
+color setCol(float depth) 
+{
+  if (depth >= 290 && depth < 310)
+  {
+    R=255;
+    G=0;
+    B=0;   
+  }
+  else if (depth >= 310 && depth < 320)
+  {
+    R=255;
+    G=127;
+    B=0;    
+  }
+  else if (depth >= 320 && depth < 390)
+  {
+    R=255;
+    B=255;
+    B=0;   
+  }
+  else if (depth >= 390 && depth < 440)
+  {
+    R=0;
+    G=255;
+    B=0;  
+  }
+  else if (depth >= 440 && depth < 490)
+  {
+    R=0;
+    G=255;
+    B=255;    
+  }
+  else if (depth >= 490 && depth < 520)
+  {
+    R=0;
+    G=0;
+    B=255;    
+  }
+  else if (depth >= 520 && depth < 550)
+  {
+    R=255;
+    G=0;
+    B=255;
+  }
+  else 
+  {
+    R=255;
+    G=255;
+    B=255;
+  }
+  return color(R,G,B);
+  
+}
