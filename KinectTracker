@@ -1,0 +1,83 @@
+class KinectTracker
+{
+  // Size of kinect image
+  int kw = 640;
+  int kh = 480;
+  int threshold = 550;
+
+  // Depth data
+  int[] depth;
+
+  PImage display;
+
+  KinectTracker()
+  {
+    kinect.start();
+    kinect.enableDepth(true);
+
+    // show depth images
+    kinect.processDepthImage(true);
+
+    display = createImage(kw, kh, PConstants.RGB); //????
+  }
+
+  void track()
+  {
+    // Get the raw depth as array of integers
+    depth = kinect.getRawDepth();
+  }
+   
+
+  void display()
+  {
+    PImage img = kinect.getDepthImage();
+
+    // rewrite the depth image to show which pixels are in the threashold to enhance
+    display.loadPixels();
+    for(int x = 0; x < kw; x++)
+    {
+      for(int y = 0; y < kh; y++)
+      {
+        //mirroring image
+        int offset = kw-x-1+y*kw;
+                
+        //raw depth
+        int rawDepth = depth[offset];
+
+        int pix = x+y*display.width;
+        if (rawDepth < threshold)
+        {
+          // change color          
+          color blobCol = setCol(rawDepth);
+          display.pixels[pix] = blobCol;
+          fill(blobCol);
+          
+          text( "depth: "+depth);          
+        }
+        else
+        {
+          display.pixels[pix] = color(0);
+        }
+      }
+    }
+    display.updatePixels();
+
+    // draw th image
+    image(display, 0, 0);
+  }
+
+  void quit()
+  {
+    kinect.quit();
+  }
+
+  int getThreshold()
+  {
+    return threshold;
+  }
+
+  void setThreshold(int t)
+  {
+    threshold = t;
+  }
+}
