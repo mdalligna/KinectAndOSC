@@ -1,0 +1,182 @@
+// import Daniel Shiffman library
+import hypermedia.video.*;
+import java.awt.*;
+import org.openkinect.*;
+import org.openkinect.processing.*;
+import oscP5.*;
+import netP5.*;
+
+OpenCV opencv;
+OscP5 oscP5;
+NetAddress myRemoteLocation;
+
+int w = 640;
+int h = 480;
+int oCVthreshold = 5;
+int numBox = 4;
+
+// showing how we can farm all the kinect stuff out to a separate class
+KinectTracker tracker;
+
+// kinect library ovject
+Kinect kinect;
+
+// Depth data
+  int[] depth;
+
+void setup()
+{
+  size(w, h);
+
+  // initializes the kinect
+  kinect = new Kinect (this);
+
+  opencv = new OpenCV( this );
+  opencv.capture(w,h);
+
+  // initializes tracker
+  tracker = new KinectTracker();
+
+  oscP5 = new OscP5(this,"239.0.0.1",7777);
+
+  //oscP5 = new OscP5(this,36000);   //SENDING
+  //myRemoteLocation = new NetAddress("127.0.0.1",12000);
+}
+
+void draw()
+{
+  background(255);
+
+  //INSTANTIATE OSC MESSAGE
+  OscMessage myMessage = new OscMessage("/posBox");
+
+  //run the tracking analysis
+  tracker.track();
+  // show the image
+  tracker.display();
+
+  // display some info
+  int t = tracker.getThreshold();
+  //int d = tracker.getRawDepth();
+  fill(255);
+  text("threshold: "+t+"   "+"framerate:" + (int)frameRate + "   "+"UP increase threshold, DOWN decrease threshold", 10, h -10);
+  //text( "depth: "+d, 10, height-30);    
+  PImage cp = get();
+
+  //opencv.allocate(width,height);                        // create the bufer
+  opencv.copy(cp);   
+
+  opencv.absDiff();
+  opencv.threshold(oCVthreshold);
+  //image( opencv.image(OpenCV.MEMORY), 0, 0 ); // absolute difference image
+
+  // working with blobs
+  Blob[] blobs = opencv.blobs( 300, w*h/3, 16, false );
+
+  pushMatrix();
+  int cNumBox= blobs.length;
+  if(cNumBox>numBox)cNumBox=numBox;
+  for( int i=0; i<cNumBox; i++ ) 
+  {
+    Rectangle bounding_rect	= blobs[i].rectangle;
+    float area = blobs[i].area;
+    float circumference = blobs[i].length;
+    Point centroid = blobs[i].centroid;
+    Point[] points = blobs[i].points;
+
+    // WHAT GOES IN THE OSC MESSAGE
+    //myMessage.add(new float[] {blobs[i].centroid.x, blobs[i].centroid.y, blobs[i].area});
+    //    IN A DIFFERENT FORMAT:    
+
+    myMessage.add((float)blobs[i].centroid.getX());
+    myMessage.add((float)blobs[i].centroid.getY());
+    myMessage.add((float)blobs[i].area);
+
+    // rectangle
+    noFill();
+    stroke( 255 );
+    rect( bounding_rect.x, bounding_rect.y, bounding_rect.width, bounding_rect.height );
+
+    // centroid
+    stroke(255);
+    line( centroid.x-10, centroid.y, centroid.x+10, centroid.y );
+    line( centroid.x, centroid.y-10, centroid.x, centroid.y+10 );
+    noStroke();
+
+
+
+
+    // data
+    //fill(255,200);
+    PVector cornerPt = new PVector();
+
+
+    if ( points.length>0 ) 
+    {
+      if(blobs[i].area < 3000.000)
+      {
+        float maxDist = 0;
+
+        beginShape();
+        for( int j=0; j<points.length; j++ ) 
+        {
+          vertex( points[j].x, points[j].y );
+          float cDist = dist(blobs[i].centroid.x,blobs[i].centroid.y,points[j].x,points[j].y);
+          if (cDist> maxDist) 
+          {
+            cornerPt.x = points[j].x;
+            cornerPt.y = points[j].y;
+          }
+        }
+        endShape(CLOSE);
+      }
+    }
+
+    myMessage.add(cornerPt.x);
+    myMessage.add(cornerPt.y);
+    fill(0,255,0);
+    rect(cornerPt.x,cornerPt.y,5,5);
+
+    oscP5.send(myMessage);
+
+    stroke(255);
+    fill(255);        
+    text( centroid.x, centroid.x+5, centroid.y+15 );
+    text( centroid.y, centroid.x+5, centroid.y+30 );
+    text( area, centroid.x+5, centroid.y+45 );
+    
+  }
+  popMatrix();
+  println(oCVthreshold);
+
+  //SEND OSC
+}
+
+void keyPressed()
+{
+  int t = tracker.getThreshold();
+  if (key == CODED)
+  {
+    if(keyCode == UP)
+    {
+      t += 5;
+      tracker.setThreshold(t);
+    }
+    else if(keyCode == DOWN)
+    {
+      t -= 5;
+      tracker.setThreshold(t);
+    }
+  }
+}
+void mouseDragged() 
+{
+  oCVthreshold = int( map(mouseX,0,width,0,255) );
+}
+
+void stop()
+{
+  opencv.stop();
+  kinect.quit();
+  super.stop();
+}
